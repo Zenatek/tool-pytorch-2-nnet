@@ -22,3 +22,6 @@ onnx
 * MatMul
 * Add
 * ReLU
+
+This supports three types of nodes: MatMul, Add, and Relu
+The .nnet file format specifies only feedforward fully-connected Relu networks, so these operations are sufficient to specify nnet networks. If the onnx model uses other operations, the convertion will fail.
