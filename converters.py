@@ -12,19 +12,12 @@ import sys
 import numpy as np
 from onnx import numpy_helper
 
-def export_onnx(path, model,device, batch_size, seq_len):#batch_size = 1 - seq_len = 35
-    model.eval()
-    #dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
-    dummy_input = torch.Tensor(64 ,1, 28, 28)
-    torch.onnx.export(model, dummy_input, path, input_names=['input'], output_names=['output'])
-    print('The model is also exported in ONNX format at {}'.
-        format(os.path.realpath(path)))
+
 
 def pt_2_nnet(destination_path_onnx, destination_path_nnet, model,device, batch_size, seq_len):
     print("WARNING: Using the default values of input bounds and normalization constants")
     export_onnx(destination_path_onnx, model,device, batch_size, seq_len)
     onnx2nnet(destination_path_onnx,nnetFile=destination_path_nnet)
-
 
 def writeNNet(weights,biases,inputMins,inputMaxes,means,ranges,fileName):
     '''
@@ -104,6 +97,14 @@ def writeNNet(weights,biases,inputMins,inputMaxes,means,ranges,fileName):
             for i in range(len(b)):
                 f2.write("%.5e,\n" % b[i]) #Five digits written. More can be used, but that requires more more space.
 
+def export_onnx(path, model,device, batch_size, seq_len):#batch_size = 1 - seq_len = 35
+    model.eval()
+    #dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
+    dummy_input = torch.Tensor(64 ,1, 28, 28)
+    torch.onnx.export(model, dummy_input, path, input_names=['input'], output_names=['output'])
+    print('The model is also exported in ONNX format at {}'.
+        format(os.path.realpath(path)))
+
 def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None, nnetFile="", inputName="", outputName=""):
     '''
     Write a .nnet file from an onnx file
@@ -122,7 +123,7 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
 
     model = onnx.load(onnxFile)
     graph = model.graph
- 
+
     if not inputName:
         #assert len(graph.input)==1 #prova a generare un dummy_input di 1
         inputName = graph.input[0].name
@@ -136,10 +137,9 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
     # This assumes that the network is "frozen", and the model uses initializers to set weight and bias array values.
     weights = []
     biases = []
-    
+
     # Loop through nodes in graph
     for node in graph.node:
-        #print(node)
         
         # Ignore nodes that do not use inputName as an input to the node
         if inputName in node.input:
@@ -150,12 +150,13 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
             # operations, this will break.
             if node.op_type=="MatMul":
                 assert len(node.input)==2
-                
+
                 # Find the name of the weight matrix, which should be the other input to the node
                 weightIndex=0
                 if node.input[0]==inputName:
                     weightIndex=1
                 weightName = node.input[weightIndex]
+
                 
                 # Extract the value of the weight matrix from the initializers
                 weights+= [numpy_helper.to_array(inits).T for inits in graph.initializer if inits.name==weightName]
@@ -165,7 +166,6 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
                 
             elif node.op_type=="Add":
                 assert len(node.input)==2
-                
                 # Find the name of the bias vector, which should be the other input to the node
                 biasIndex=0
                 if node.input[0]==inputName:
@@ -181,7 +181,6 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
             # For the .nnet file format, the Relu's are implicit, so we just need to update the input
             elif node.op_type=="Relu":
                 inputName = node.output[0]
-                
             # If there is a different node in the model that is not supported, through an error and break out of the loop
             else:
                 print("Node operation type %s not supported!"%node.op_type)
@@ -192,9 +191,8 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
             # Terminate once we find the outputName in the graph
             #if outputName == inputName:
                 #break
-       
     # Check if the weights and biases were extracted correctly from the graph
-    if outputName==inputName and len(weights)>0 and len(weights)==len(biases):
+    if outputName==inputName and len(weights)>=0 and len(weights)==len(biases):
         
         inputSize = weights[0].shape[0]
         
