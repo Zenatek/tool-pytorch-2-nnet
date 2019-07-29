@@ -7,11 +7,13 @@ First of all the function converts the .pt model to .onnx format. Then the ONNX 
  
 ## How to use
 Import the convertes.py and insert the function below in the main file of model to convert it to .nnet format.
-
+input parameter is a tensor.
+i.e input = torch.Tensor(64 ,1, 28, 28)
 ```
 from convertes import *
 pt_2_nnet(destination_path_onnx, destination_path_nnet, model, input)
 ```
+
 ## Modules installed
 ```
 torch.onnx
