@@ -14,10 +14,16 @@ from onnx import numpy_helper
 
 
 
-def pt_2_nnet(destination_path_onnx, destination_path_nnet, model,device, batch_size, seq_len):
+def pt_2_nnet(destination_path_onnx, destination_path_nnet, model, _input):
     print("WARNING: Using the default values of input bounds and normalization constants")
-    export_onnx(destination_path_onnx, model,device, batch_size, seq_len)
+    export_onnx(destination_path_onnx, model,_input)
     onnx2nnet(destination_path_onnx,nnetFile=destination_path_nnet)
+
+def export_onnx(path, model,_input):
+    model.eval()
+    torch.onnx.export(model, _input, path, input_names=['input'], output_names=['output'])
+    print('The model is also exported in ONNX format at {}'.
+        format(os.path.realpath(path)))
 
 def writeNNet(weights,biases,inputMins,inputMaxes,means,ranges,fileName):
     '''
@@ -97,13 +103,7 @@ def writeNNet(weights,biases,inputMins,inputMaxes,means,ranges,fileName):
             for i in range(len(b)):
                 f2.write("%.5e,\n" % b[i]) #Five digits written. More can be used, but that requires more more space.
 
-def export_onnx(path, model,device, batch_size, seq_len):#batch_size = 1 - seq_len = 35
-    model.eval()
-    #dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
-    dummy_input = torch.Tensor(64 ,1, 28, 28)
-    torch.onnx.export(model, dummy_input, path, input_names=['input'], output_names=['output'])
-    print('The model is also exported in ONNX format at {}'.
-        format(os.path.realpath(path)))
+
 
 def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None, nnetFile="", inputName="", outputName=""):
     '''
@@ -125,10 +125,8 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
     graph = model.graph
 
     if not inputName:
-        #assert len(graph.input)==1 #prova a generare un dummy_input di 1
         inputName = graph.input[0].name
     if not outputName:
-        #assert len(graph.output)==1
         outputName = graph.output[0].name
     
     # Search through nodes until we find the inputName.
@@ -184,13 +182,13 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
             # If there is a different node in the model that is not supported, through an error and break out of the loop
             else:
                 print("Node operation type %s not supported!"%node.op_type)
-                # weights = []
-                # biases=[]
-                # break
+                weights = []
+                biases=[]
+                break
                 
             # Terminate once we find the outputName in the graph
-            #if outputName == inputName:
-                #break
+            if outputName == inputName:
+                break
     # Check if the weights and biases were extracted correctly from the graph
     if outputName==inputName and len(weights)>=0 and len(weights)==len(biases):
         
@@ -213,19 +211,3 @@ def onnx2nnet(onnxFile, inputMins=None, inputMaxes=None, means=None, ranges=None
     # Something went wrong, so don't write the NNet file
     else:
         print("Could not write NNet file!")
-
-
-# def export_onnx(path, batch_size, seq_len):
-#     print('The model is also exported in ONNX format at {}'.
-#           format(os.path.realpath(args.onnx_export)))
-#     model.eval()
-#     dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
-#     hidden = model.init_hidden(batch_size)
-#     torch.onnx.export(model, (dummy_input, hidden), path)
-
-##in main.py after convertion to onnx
-# # Load ONNX model and convert to TensorFlow format
-# model_onnx = onnx.load('mnist_dNet.onnx')
-# tf_rep = prepare(model_onnx)
-# # Print out tensors and placeholders in model (helpful during inference in TensorFlow)
-# print(tf_rep.tensor_dict)
