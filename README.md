@@ -6,11 +6,11 @@ Simple tool to convert a pytorch model .pt to reluplex model .nnet
 First of all the function converts the .pt model to .onnx format. Then the ONNX model will be converted to .nnet. 
  
 ## How to use
-Import the convertes.py and insert the function below into the main file of model to convert it to .nnet format.
+Import the convertes.py and insert the function below in the main file of model to convert it to .nnet format.
 
 ```
 from convertes import *
-pt_2_nnet(destination_path_onnx, destination_path_nnet, model,device, batch_size, seq_len)
+pt_2_nnet(destination_path_onnx, destination_path_nnet, model, input)
 ```
 ## Modules installed
 ```
